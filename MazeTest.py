@@ -184,25 +184,26 @@ def Solve():
                 maze[i][j] = 0
             elif maze[i][j] == 9:
                 fin = (i, j)
-                maze[i][j] = 0
+
     steps = 10
     maze[init[0]][init[1]] = steps
-    while maze[fin[0]][fin[1]] ==0:
+    while maze[fin[0]][fin[1]] ==9:
         for x in range(GRIDN):
             for y in range(GRIDM):
                 if maze[x][y] == steps:
-                    if maze[x+1][y] == 0:
+                    if maze[x+1][y] == 0 or maze[x+1][y] ==9:
                         maze[x+1][y] = steps+1
-                    if maze[x-1][y] == 0:
+                    if maze[x-1][y] == 0 or maze[x-1][y] == 9:
                         maze[x-1][y] = steps + 1
-                    if maze[x][y+1] == 0:
+                    if maze[x][y+1] == 0 or maze[x][y+1]==9:
                         maze[x][y+1] = steps + 1
-                    if maze[x][y-1] == 0:
+                    if maze[x][y-1] == 0 or maze[x][y-1] ==9:
                         maze[x][y-1] = steps + 1
         time.sleep(0.1)
         drawGrid()
         steps+=1
     i, j = fin
+    maze[fin] = 9
     while maze[init] != 2:
         if maze[i+1, j] == steps-1:
             maze[i+1,j] = 2
