@@ -1,4 +1,5 @@
 import random
+import time
 
 import pygame
 import numpy as np
@@ -21,6 +22,7 @@ WHITE = (200,200,200)
 BLACK = (1,1,1)
 BLUE = (0, 0, 250)
 RED = (250, 0, 0)
+YELLOW = (247, 219, 5)
 
 
 # maze = np.zeros((GRIDM, GRIDN))
@@ -128,10 +130,12 @@ def drawGrid():
                 pygame.draw.rect(WIN, WHITE, rect)
             elif maze[x,y] == 1:
                 pygame.draw.rect(WIN, BLACK, rect)
-            elif maze[x, y] == 2:
+            elif maze[x, y] == 2 or maze[x,y] == 10:
                 pygame.draw.rect(WIN, BLUE, rect)
             elif maze[x, y] == 9:
                 pygame.draw.rect(WIN, RED, rect)
+            elif maze[x,y] >10:
+                pygame.draw.rect(WIN, YELLOW, rect)
 
     pygame.display.update()
 
@@ -163,6 +167,61 @@ def ClearStartAndEnd():
     drawGrid()
     return 0
 
+def PrintMaze():
+    for i in range(GRIDN-1):
+        for j in range(GRIDM-1):
+            print(maze[i][j], end=' ')
+        print()
+
+
+def Solve():
+    init = ()
+    fin = ()
+    for i in range(GRIDN-1):
+        for j in range(GRIDM-1):
+            if maze[i][j] == 2:
+                init = (i, j)
+                maze[i][j] = 0
+            elif maze[i][j] == 9:
+                fin = (i, j)
+                maze[i][j] = 0
+    steps = 10
+    maze[init[0]][init[1]] = steps
+    while maze[fin[0]][fin[1]] ==0:
+        for x in range(GRIDN):
+            for y in range(GRIDM):
+                if maze[x][y] == steps:
+                    if maze[x+1][y] == 0:
+                        maze[x+1][y] = steps+1
+                    if maze[x-1][y] == 0:
+                        maze[x-1][y] = steps + 1
+                    if maze[x][y+1] == 0:
+                        maze[x][y+1] = steps + 1
+                    if maze[x][y-1] == 0:
+                        maze[x][y-1] = steps + 1
+        time.sleep(0.1)
+        drawGrid()
+        steps+=1
+    i, j = fin
+    while maze[init] != 2:
+        if maze[i+1, j] == steps-1:
+            maze[i+1,j] = 2
+            i+=1
+        elif maze[i-1, j] == steps-1:
+            maze[i-1,j] = 2
+            i-=1
+        elif maze[i, j+1] == steps-1:
+            maze[i,j+1] = 2
+            j+=1
+        elif maze[i, j-1] == steps-1:
+            maze[i,j-1] = 2
+            j-=1
+        steps -= 1
+        drawGrid()
+        time.sleep(0.05)
+    PrintMaze()
+
+
 def main():
 
     POSFLAG = 0
@@ -177,6 +236,7 @@ def main():
     Button(button_location_x, button_location_y, 100, 50, 'Generate')
     Button(200, 30, 100, 50, 'Clear')
     Button(350, 30, 100, 50, 'Restart')
+    Button(500, 30, 100, 50, 'Solve')
 
     pygame.display.update()
     while run:
@@ -195,6 +255,10 @@ def main():
                 elif 350 <= mouse[0] <=350+100 and button_location_y <= mouse[1] <= button_location_y+50:
                     POSFLAG = ClearStartAndEnd()
                     print(POSFLAG)
+                elif 500 <= mouse[0] <= 500+100 and button_location_y <= mouse[1] <= button_location_y+50 and POSFLAG == 2:
+                    print('Solving...')
+                    Solve()
+                    drawGrid()
                 elif POSFLAG < 2:
                     POSFLAG = CheckCell(mouse[0], mouse[1], POSFLAG)
                     print(POSFLAG)
