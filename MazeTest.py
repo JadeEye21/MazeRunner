@@ -8,7 +8,7 @@ pygame.init()
 
 WIDTH, HEIGHT = 1200, 800
 TRANSPOSEX, TRANSPOSEY = 180,100
-
+blockSize = 20
 GRIDN=31
 GRIDM=31
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -19,6 +19,9 @@ BGCOLOR = (102, 102, 102)
 GREY = (179, 201, 201)
 WHITE = (200,200,200)
 BLACK = (1,1,1)
+BLUE = (0, 0, 250)
+RED = (250, 0, 0)
+
 
 # maze = np.zeros((GRIDM, GRIDN))
 maze = np.ones((GRIDN, GRIDM))
@@ -93,6 +96,7 @@ def ReRun():
 
 
 def Clear():
+    POSFLAG=0
     print("Clearing")
     clearMaze()
     drawGrid()
@@ -100,6 +104,7 @@ def Clear():
 
 
 def clearMaze():
+
     for x in range(GRIDN):
         for y in range(GRIDM):
             maze[x][y]=1
@@ -112,7 +117,7 @@ def draw_window():
 
 
 def drawGrid():
-    blockSize = 20  #Set the size of the grid block
+    # blockSize = 20  #Set the size of the grid block
     for y in range(GRIDN):
         for x in range(GRIDM):
             rect = pygame.Rect(
@@ -123,11 +128,45 @@ def drawGrid():
                 pygame.draw.rect(WIN, WHITE, rect)
             elif maze[x,y] == 1:
                 pygame.draw.rect(WIN, BLACK, rect)
+            elif maze[x, y] == 2:
+                pygame.draw.rect(WIN, BLUE, rect)
+            elif maze[x, y] == 9:
+                pygame.draw.rect(WIN, RED, rect)
+
     pygame.display.update()
 
 
+def CheckCell(x, y, POSFLAG):
+    for i in range(GRIDN - 1):
+        for j in range(GRIDM - 1):
+            if TRANSPOSEX+blockSize*i <= x <= TRANSPOSEX+blockSize*(i+1) and TRANSPOSEY+blockSize*j <= y <= TRANSPOSEY+blockSize*(j+1):
+                if maze[i][j] == 0 and POSFLAG == 0:
+                    maze[i][j] = 2
+                    drawGrid()
+                    return 1
+                    # print(POSFLAG)
+                if maze[i][j] == 0 and POSFLAG == 1:
+                    maze[i][j] = 9
+                    drawGrid()
+                    return 2
+                    # print(POSFLAG)
+                else:
+                    print("wrong click")
+                    return POSFLAG
+    return 0
+
+def ClearStartAndEnd():
+    for i in range(GRIDN-1):
+        for j in range(GRIDM-1):
+            if maze[i][j] >1:
+                maze[i][j]=0
+    drawGrid()
+    return 0
+
 def main():
 
+    POSFLAG = 0
+    print(type(POSFLAG))
     clock = pygame.time.Clock()
     run = True
     draw_window()
@@ -135,8 +174,10 @@ def main():
     drawGrid()
     button_location_x = 50
     button_location_y = 30
-    Button(button_location_x, button_location_y, 100, 50, 'ReRun')
+    Button(button_location_x, button_location_y, 100, 50, 'Generate')
     Button(200, 30, 100, 50, 'Clear')
+    Button(350, 30, 100, 50, 'Restart')
+
     pygame.display.update()
     while run:
         clock.tick(FPS//10)
@@ -147,9 +188,17 @@ def main():
                 run = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if button_location_x <= mouse[0]<=button_location_x+100 and button_location_y <= mouse[1] <= button_location_y+50:
+                    POSFLAG = 0
                     ReRun()
                 elif 200 <= mouse[0] <= 200+100 and button_location_y <= mouse[1] <= button_location_y+50:
                     Clear()
+                elif 350 <= mouse[0] <=350+100 and button_location_y <= mouse[1] <= button_location_y+50:
+                    POSFLAG = ClearStartAndEnd()
+                    print(POSFLAG)
+                elif POSFLAG < 2:
+                    POSFLAG = CheckCell(mouse[0], mouse[1], POSFLAG)
+                    print(POSFLAG)
+
 
     pygame.quit()
     print("main window")
