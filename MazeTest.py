@@ -220,7 +220,7 @@ def Solve():
         steps -= 1
         drawGrid()
         time.sleep(0.05)
-    PrintMaze()
+    # PrintMaze()
 
 
 def main():
