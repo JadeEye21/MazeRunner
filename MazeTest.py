@@ -128,6 +128,8 @@ def drawGrid():
                 blockSize, blockSize)
             if maze[x,y]==0 :
                 pygame.draw.rect(WIN, WHITE, rect)
+            elif maze[x,y]==-1 :
+                pygame.draw.rect(WIN, WHITE, rect)
             elif maze[x,y] == 1:
                 pygame.draw.rect(WIN, BLACK, rect)
             elif maze[x, y] == 2 or maze[x,y] == 10:
@@ -174,7 +176,7 @@ def PrintMaze():
         print()
 
 
-def Solve():
+def SolveUsingBFS():
     init = ()
     fin = ()
     for i in range(GRIDN-1):
@@ -223,6 +225,57 @@ def Solve():
     # PrintMaze()
 
 
+def SolveUsingDFS():
+    init = ()
+    fin = ()
+    for i in range(GRIDN - 1):
+        for j in range(GRIDM - 1):
+            if maze[i][j] == 2:
+                init = (i, j)
+                maze[i][j] = 0
+            elif maze[i][j] == 9:
+                fin = (i, j)
+
+    stack = []
+    run = True
+    stack.append((init))
+    flag = 0
+    while run:
+        maze[stack[-1]] =11
+        i, j = stack[-1]
+        # stack.pop()
+        if maze[i+1, j] ==0:
+            stack.append((i+1, j))
+        elif maze[i-1, j] ==0:
+            stack.append((i-1, j))
+        elif maze[i, j+1] ==0:
+            stack.append((i, j+1))
+        elif maze[i, j-1] ==0:
+            stack.append((i, j-1))
+        elif maze[i+1, j] ==9:
+            run=False
+        elif maze[i-1, j] ==9:
+            run=False
+        elif maze[i, j+1] ==9:
+            run=False
+        elif maze[i, j-1] ==9:
+            run=False
+        else:
+            maze[i, j] = -1
+            stack.pop()
+        drawGrid()
+        time.sleep(0.05)
+
+    while len(stack)!=0:
+        maze[stack[-1]] =2
+        stack.pop()
+        drawGrid()
+        time.sleep(0.01)
+
+
+    # PrintMaze()
+
+
 def main():
 
     POSFLAG = 0
@@ -237,7 +290,8 @@ def main():
     Button(button_location_x, button_location_y, 100, 50, 'Generate')
     Button(200, 30, 100, 50, 'Clear')
     Button(350, 30, 100, 50, 'Restart')
-    Button(500, 30, 100, 50, 'Solve')
+    Button(500, 30, 100, 50, 'Solve by BFS')
+    Button(650, 30, 100, 50, 'Solve by DFS')
 
     pygame.display.update()
     while run:
@@ -258,8 +312,14 @@ def main():
                     print(POSFLAG)
                 elif 500 <= mouse[0] <= 500+100 and button_location_y <= mouse[1] <= button_location_y+50 and POSFLAG == 2:
                     print('Solving...')
-                    Solve()
+                    SolveUsingBFS()
                     drawGrid()
+                    POSFLAG = 0
+                elif 650 <= mouse[0] <= 650 + 100 and button_location_y <= mouse[1] <= button_location_y + 50 and POSFLAG == 2:
+                    print('Solving...')
+                    SolveUsingDFS()
+                    drawGrid()
+                    POSFLAG = 0
                 elif POSFLAG < 2:
                     POSFLAG = CheckCell(mouse[0], mouse[1], POSFLAG)
                     print(POSFLAG)
