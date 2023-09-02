@@ -8,7 +8,7 @@ import os
 pygame.init()
 
 WIDTH, HEIGHT = 1200, 800
-TRANSPOSEX, TRANSPOSEY = 180,100
+TRANSPOSEX, TRANSPOSEY = 150,100
 blockSize = 20
 GRIDN=31
 GRIDM=31
@@ -23,10 +23,15 @@ BLACK = (1,1,1)
 BLUE = (0, 0, 250)
 RED = (250, 0, 0)
 YELLOW = (247, 219, 5)
+GREEN = (0, 200, 0)
+STEPS = 0
+
 
 
 # maze = np.zeros((GRIDM, GRIDN))
 maze = np.ones((GRIDN, GRIDM))
+checkpoints= []
+FinalRoute = []
 # maze = np.random.randint( 2, size=(GRIDN, GRIDM))
 
 def Button(x, y, buttonSizeX, buttonSizeY, message):
@@ -100,6 +105,8 @@ def ReRun():
 def Clear():
     POSFLAG=0
     print("Clearing")
+    global STEPS
+    STEPS = 0
     clearMaze()
     drawGrid()
     pygame.display.update()
@@ -134,12 +141,14 @@ def drawGrid():
                 pygame.draw.rect(WIN, BLACK, rect)
             elif maze[x, y] == 2 or maze[x,y] == 10:
                 pygame.draw.rect(WIN, BLUE, rect)
+            elif maze[x, y] == 4:
+                pygame.draw.rect(WIN, GREEN, rect)
             elif maze[x, y] == 9:
                 pygame.draw.rect(WIN, RED, rect)
             elif maze[x,y] >10:
                 pygame.draw.rect(WIN, YELLOW, rect)
 
-    pygame.display.update()
+    pygame.display.flip()
 
 
 def CheckCell(x, y, POSFLAG):
@@ -164,23 +173,50 @@ def CheckCell(x, y, POSFLAG):
 def ClearStartAndEnd():
     for i in range(GRIDN-1):
         for j in range(GRIDM-1):
-            if maze[i][j] >1:
+            if maze[i][j] != 1:
                 maze[i][j]=0
+    checkpoints.clear()
+    FinalRoute.clear()
+    global STEPS
+    STEPS =0
+    WIN.fill(BGCOLOR, (800, 600, 100, 50))
     drawGrid()
     return 0
 
 def PrintMaze():
-    for i in range(GRIDN-1):
-        for j in range(GRIDM-1):
-            print(maze[i][j], end=' ')
+    for i in range(GRIDN):
+        for j in range(GRIDM):
+            print(f"{int(maze[j][i]):2d}", end=' ')
         print()
 
+
+def updateGrid(updateVars):
+    x, y = updateVars
+    rect = pygame.Rect(
+        TRANSPOSEX + x * (blockSize),
+        TRANSPOSEY + y * (blockSize),
+        blockSize, blockSize)
+    if maze[x, y] == 0:
+        pygame.draw.rect(WIN, WHITE, rect)
+    elif maze[x, y] == -1:
+        pygame.draw.rect(WIN, WHITE, rect)
+    elif maze[x, y] == 1:
+        pygame.draw.rect(WIN, BLACK, rect)
+    elif maze[x, y] == 2 or maze[x, y] == 10:
+        pygame.draw.rect(WIN, BLUE, rect)
+    elif maze[x, y] == 4:
+        pygame.draw.rect(WIN, GREEN, rect)
+    elif maze[x, y] == 9:
+        pygame.draw.rect(WIN, RED, rect)
+    elif maze[x, y] > 10:
+        pygame.draw.rect(WIN, YELLOW, rect)
+    pygame.display.update(rect)
 
 def SolveUsingBFS():
     init = ()
     fin = ()
-    for i in range(GRIDN-1):
-        for j in range(GRIDM-1):
+    for i in range(GRIDN):
+        for j in range(GRIDM):
             if maze[i][j] == 2:
                 init = (i, j)
                 maze[i][j] = 0
@@ -204,28 +240,120 @@ def SolveUsingBFS():
         time.sleep(0.1)
         drawGrid()
         steps+=1
+
+    PrintMaze()
+    print(steps)
     i, j = fin
     maze[fin] = 9
     while maze[init] != 2:
-        if maze[i+1, j] == steps-1:
+        updateVars = []
+        if i+1 < GRIDN and maze[i+1, j] == steps-1:
             maze[i+1,j] = 2
+            updateVars = [i+1, j]
             i+=1
-        elif maze[i-1, j] == steps-1:
+        elif i+1 >=0 and maze[i-1, j] == steps-1:
             maze[i-1,j] = 2
+            updateVars = [i - 1, j]
             i-=1
-        elif maze[i, j+1] == steps-1:
+        elif j+1 < GRIDM and maze[i, j+1] == steps-1:
             maze[i,j+1] = 2
+            updateVars = [i , j+1]
             j+=1
-        elif maze[i, j-1] == steps-1:
+        elif j+1 >=0 and maze[i, j-1] == steps-1:
             maze[i,j-1] = 2
+            updateVars = [i, j - 1]
             j-=1
         steps -= 1
-        drawGrid()
+        updateGrid(updateVars)
+        # drawGrid()
         time.sleep(0.05)
+
+    drawGrid()
+    pygame.display.flip()
+    PrintMaze()
+
+
+
+
+
+def SolveUsingDFS(init, fin):
+    global STEPS
+    stack = []
+    run = True
+    stack.append((init))
+    flag = 0
+    while run:
+        maze[stack[-1]] =11
+        STEPS+=1
+        # print(STEPS)
+        i, j = stack[-1]
+        # stack.pop()
+        if maze[i+1, j] ==0 :
+            stack.append((i+1, j))
+        elif maze[i, j+1] ==0 :
+            stack.append((i, j+1))
+        elif maze[i-1, j] ==0 :
+            stack.append((i-1, j))
+        elif maze[i, j-1] ==0 :
+            stack.append((i, j-1))
+        elif (i+1, j) == fin:
+            run=False
+        elif (i, j+1) == fin:
+            run=False
+        elif (i, j-1) == fin:
+            run=False
+        elif (i-1, j) == fin:
+            run=False
+        else:
+            maze[i, j] = -1
+            STEPS-=1
+            pygame.display.update()
+            stack.pop()
+            if(len(stack)==0):
+                return
+        drawGrid()
+        time.sleep(0.01)
+    if len(checkpoints)==2:
+        while len(stack)!=0 :
+            maze[stack[-1]] =2
+            
+            stack.pop()
+            drawGrid()
+            time.sleep(0.005)
+    else:
+        while len(stack)!=0:
+            # maze[stack[-1]] = 2
+            FinalRoute.append(stack[-1])
+            # drawGrid()
+            if checkpoints.count(stack[-1]) == 1:
+                pass
+            else:
+                maze[stack[-1]] = 0
+            stack.pop()
+            # time.sleep(0.01)
+
+
     # PrintMaze()
 
 
-def SolveUsingDFS():
+def AddCheckpoint(x, y):
+    count=0
+
+    for i in range(GRIDN - 1):
+        for j in range(GRIDM - 1):
+            if TRANSPOSEX+blockSize*i <= x <= TRANSPOSEX+blockSize*(i+1) and TRANSPOSEY+blockSize*j <= y <= TRANSPOSEY+blockSize*(j+1):
+                if maze[i][j] == 0:
+                    maze[i, j] = 4
+                    count+=1
+                    checkpoints.append((i, j))
+                else:
+                    print("wrong click")
+
+    drawGrid()
+    return count
+
+
+def Routing():
     init = ()
     fin = ()
     for i in range(GRIDN - 1):
@@ -235,50 +363,33 @@ def SolveUsingDFS():
                 maze[i][j] = 0
             elif maze[i][j] == 9:
                 fin = (i, j)
+    checkpoints.insert(0, init)
+    checkpoints.append(fin)
 
-    stack = []
-    run = True
-    stack.append((init))
-    flag = 0
-    while run:
-        maze[stack[-1]] =11
-        i, j = stack[-1]
-        # stack.pop()
-        if maze[i+1, j] ==0:
-            stack.append((i+1, j))
-        elif maze[i-1, j] ==0:
-            stack.append((i-1, j))
-        elif maze[i, j+1] ==0:
-            stack.append((i, j+1))
-        elif maze[i, j-1] ==0:
-            stack.append((i, j-1))
-        elif maze[i+1, j] ==9:
-            run=False
-        elif maze[i-1, j] ==9:
-            run=False
-        elif maze[i, j+1] ==9:
-            run=False
-        elif maze[i, j-1] ==9:
-            run=False
-        else:
-            maze[i, j] = -1
-            stack.pop()
-        drawGrid()
-        time.sleep(0.05)
+    for i in range(len(checkpoints)-1):
+        for x in range(GRIDN - 1):
+            for y in range(GRIDM - 1):
+                if maze[x,y] == -1:
+                    maze[x,y] = 0
+        SolveUsingDFS(checkpoints[i], checkpoints[i+1])
 
-    while len(stack)!=0:
-        maze[stack[-1]] =2
-        stack.pop()
-        drawGrid()
-        time.sleep(0.01)
-
-
-    # PrintMaze()
+    if len(checkpoints)>2:
+        while len(FinalRoute)!=0:
+            if checkpoints.count(FinalRoute[-1]) ==1:
+                maze[FinalRoute[-1]] = 4
+                drawGrid()
+                time.sleep(0.005)
+            else:
+                maze[FinalRoute[-1]] = 2
+                drawGrid()
+                time.sleep(0.005)
+            FinalRoute.pop()
 
 
 def main():
-
+    global STEPS
     POSFLAG = 0
+    CHECKFLAG = 0
     print(type(POSFLAG))
     clock = pygame.time.Clock()
     run = True
@@ -292,15 +403,22 @@ def main():
     Button(350, 30, 100, 50, 'Restart')
     Button(500, 30, 100, 50, 'Solve by BFS')
     Button(650, 30, 100, 50, 'Solve by DFS')
+    Button(800, 30, 120, 50, 'Add checkpoint')
+    Button(800, 85, 120, 50, 'Route')
+    Button(800, 140, 120, 50, 'Stop')
+    text = FONT.render(str(STEPS), True, BLACK)
+    WIN.blit(text, (800, 600))
 
     pygame.display.update()
     while run:
         clock.tick(FPS//10)
         mouse = pygame.mouse.get_pos()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 print("Exiting...")
                 run = False
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if button_location_x <= mouse[0]<=button_location_x+100 and button_location_y <= mouse[1] <= button_location_y+50:
                     POSFLAG = 0
@@ -310,6 +428,15 @@ def main():
                 elif 350 <= mouse[0] <=350+100 and button_location_y <= mouse[1] <= button_location_y+50:
                     POSFLAG = ClearStartAndEnd()
                     print(POSFLAG)
+
+                elif 800 <= mouse[0] <= 800 + 120 and button_location_y <= mouse[1] <= button_location_y + 50 and POSFLAG == 2:
+                    CHECKFLAG += 1
+
+                elif 800 <= mouse[0] <= 800 + 120 and 85 <= mouse[1] <= 85 + 50 and POSFLAG == 2:
+                    print("Routing")
+                    Routing()
+                # elif 800 <= mouse[0] <= 800 + 120 and 140 <= mouse[1] <= 140 + 50:
+                #     raise Exception('Stopping')
                 elif 500 <= mouse[0] <= 500+100 and button_location_y <= mouse[1] <= button_location_y+50 and POSFLAG == 2:
                     print('Solving...')
                     SolveUsingBFS()
@@ -317,12 +444,25 @@ def main():
                     POSFLAG = 0
                 elif 650 <= mouse[0] <= 650 + 100 and button_location_y <= mouse[1] <= button_location_y + 50 and POSFLAG == 2:
                     print('Solving...')
-                    SolveUsingDFS()
+                    # SolveUsingDFS()
+                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    Routing()
                     drawGrid()
+                    print(STEPS)
+                    text = FONT.render(str(STEPS), True, BLACK)
+                    WIN.blit(text, (800, 600))
+
+                    pygame.display.flip()
+
                     POSFLAG = 0
                 elif POSFLAG < 2:
                     POSFLAG = CheckCell(mouse[0], mouse[1], POSFLAG)
                     print(POSFLAG)
+                elif CHECKFLAG == 1:
+                    print('Adding')
+                    n = AddCheckpoint(mouse[0], mouse[1])
+                    print(len(checkpoints))
+                    CHECKFLAG -=1
 
 
     pygame.quit()
