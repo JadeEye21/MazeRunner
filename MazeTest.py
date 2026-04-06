@@ -250,13 +250,9 @@ def SolveSegmentBFS(init, fin, show_path=True):
             drawGrid()
             time.sleep(0.005)
         maze[init] = START
-        drawGrid()
     else:
         for cell in path_cells:
             FinalRoute.append(cell)
-
-    drawGrid()
-    pygame.display.flip()
 
 
 def SolveUsingDFS(init, fin, show_path=True):
@@ -357,6 +353,10 @@ def Routing(algorithm='dfs'):
                 maze[cell] = START
             drawGrid()
             time.sleep(0.005)
+
+    maze[init] = START
+    maze[fin] = END
+    drawGrid()
 
 
 def main():
