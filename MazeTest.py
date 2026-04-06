@@ -205,45 +205,55 @@ def find_start_end():
     return init, fin
 
 
-def SolveUsingBFS():
-    init, fin = find_start_end()
-    if init is None or fin is None:
-        print("Set start and end points first!")
-        return
-
-    maze[init[0]][init[1]] = BFS_BASE
+def SolveSegmentBFS(init, fin, show_path=True):
+    maze[init] = BFS_BASE
     steps = BFS_BASE
 
-    while maze[fin[0]][fin[1]] == END:
+    while maze[fin] in (END, PATH, CHECKPOINT):
         pump_events()
         for x in range(GRIDN):
             for y in range(GRIDM):
                 if maze[x][y] == steps:
                     for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                         nx, ny = x + dx, y + dy
-                        if in_bounds(nx, ny) and maze[nx][ny] in (PATH, END):
+                        if in_bounds(nx, ny) and maze[nx][ny] in (PATH, END, CHECKPOINT):
                             maze[nx][ny] = steps + 1
         time.sleep(0.1)
         drawGrid()
         steps += 1
 
+    path_cells = []
     i, j = fin
-    maze[fin] = END
-    while maze[init] != START:
+    maze[fin] = steps
+    while (i, j) != init:
         pump_events()
         moved = False
         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             ni, nj = i + dx, j + dy
             if in_bounds(ni, nj) and maze[ni, nj] == steps - 1:
-                maze[ni, nj] = START
-                updateGrid(ni, nj)
+                path_cells.append((ni, nj))
                 i, j = ni, nj
                 moved = True
                 break
         if not moved:
             break
         steps -= 1
-        time.sleep(0.05)
+
+    for x in range(GRIDN):
+        for y in range(GRIDM):
+            if maze[x][y] >= BFS_BASE:
+                maze[x][y] = PATH
+
+    if show_path:
+        for cell in path_cells:
+            maze[cell] = START
+            drawGrid()
+            time.sleep(0.005)
+        maze[init] = START
+        drawGrid()
+    else:
+        for cell in path_cells:
+            FinalRoute.append(cell)
 
     drawGrid()
     pygame.display.flip()
@@ -311,7 +321,7 @@ def AddCheckpoint(x, y):
     return 0
 
 
-def Routing():
+def Routing(algorithm='dfs'):
     init, fin = find_start_end()
     if init is None or fin is None:
         print("Set start and end points first!")
@@ -325,10 +335,18 @@ def Routing():
     for idx in range(len(route_points) - 1):
         for x in range(GRIDN):
             for y in range(GRIDM):
-                if maze[x, y] == DEAD_END:
+                if maze[x, y] in (DEAD_END, DFS_VISITED):
                     maze[x, y] = PATH
-        SolveUsingDFS(route_points[idx], route_points[idx + 1],
-                       show_path=not has_checkpoints)
+
+        seg_start = route_points[idx]
+        seg_end = route_points[idx + 1]
+
+        if algorithm == 'bfs':
+            SolveSegmentBFS(seg_start, seg_end,
+                            show_path=not has_checkpoints)
+        else:
+            SolveUsingDFS(seg_start, seg_end,
+                          show_path=not has_checkpoints)
 
     if has_checkpoints:
         while FinalRoute:
@@ -357,7 +375,6 @@ def main():
     btn_bfs = pygame.Rect(500, 30, 100, 50)
     btn_dfs = pygame.Rect(650, 30, 100, 50)
     btn_checkpoint = pygame.Rect(800, 30, 120, 50)
-    btn_route = pygame.Rect(800, 85, 120, 50)
 
     Button(btn_gen.x, btn_gen.y, btn_gen.w, btn_gen.h, 'Generate')
     Button(btn_clear.x, btn_clear.y, btn_clear.w, btn_clear.h, 'Clear')
@@ -365,7 +382,6 @@ def main():
     Button(btn_bfs.x, btn_bfs.y, btn_bfs.w, btn_bfs.h, 'Solve by BFS')
     Button(btn_dfs.x, btn_dfs.y, btn_dfs.w, btn_dfs.h, 'Solve by DFS')
     Button(btn_checkpoint.x, btn_checkpoint.y, btn_checkpoint.w, btn_checkpoint.h, 'Add checkpoint')
-    Button(btn_route.x, btn_route.y, btn_route.w, btn_route.h, 'Route')
 
     text = FONT.render(str(STEPS), True, BLACK)
     WIN.blit(text, (800, 600))
@@ -397,20 +413,22 @@ def main():
                 elif btn_checkpoint.collidepoint(mouse) and posflag == 2:
                     checkflag += 1
 
-                elif btn_route.collidepoint(mouse) and posflag == 2:
-                    Routing()
-
                 elif btn_bfs.collidepoint(mouse) and posflag == 2:
-                    SolveUsingBFS()
+                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    FinalRoute.clear()
+                    STEPS = 0
+                    Routing('bfs')
                     drawGrid()
+                    text = FONT.render(str(STEPS), True, BLACK)
+                    WIN.blit(text, (800, 600))
+                    pygame.display.flip()
                     posflag = 0
 
                 elif btn_dfs.collidepoint(mouse) and posflag == 2:
                     WIN.fill(BGCOLOR, (800, 600, 100, 50))
-                    checkpoints.clear()
                     FinalRoute.clear()
                     STEPS = 0
-                    Routing()
+                    Routing('dfs')
                     drawGrid()
                     text = FONT.render(str(STEPS), True, BLACK)
                     WIN.blit(text, (800, 600))

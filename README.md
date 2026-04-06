@@ -30,8 +30,8 @@ Explores all neighbors at the current depth before moving deeper. Uses a wavefro
 ### DFS (Depth-First Search)
 Uses a stack to explore as deep as possible along each branch before backtracking. Visited dead-ends are marked and skipped. The final path is the stack contents when the end is reached.
 
-### Checkpoint Routing
-When checkpoints are placed, the solver runs DFS between consecutive waypoints (start → checkpoint₁ → checkpoint₂ → ... → end) and stitches the segments together into a complete route.
+### Multi-Checkpoint Routing
+Both BFS and DFS support multi-checkpoint routing. Place any number of intermediate waypoints, then click either solver — it automatically breaks the problem into segments (start → checkpoint₁ → checkpoint₂ → ... → end) and solves each segment with your chosen algorithm, stitching them into a complete route. BFS guarantees the shortest path per segment; DFS explores exhaustively.
 
 ## Controls
 
@@ -40,12 +40,11 @@ When checkpoints are placed, the solver runs DFS between consecutive waypoints (
 | **Generate** | Create a new random maze |
 | **Clear** | Reset the entire grid |
 | **Restart** | Clear solution paths, keep the maze |
-| **Solve by BFS** | Run BFS from start to end |
-| **Solve by DFS** | Run DFS from start to end |
+| **Solve by BFS** | Run BFS (direct or through checkpoints) |
+| **Solve by DFS** | Run DFS (direct or through checkpoints) |
 | **Add checkpoint** | Click to place a waypoint, then click a cell |
-| **Route** | Solve through all checkpoints |
 
-**Usage:** After generating a maze, click any open cell to set the **start** (blue), then click another to set the **end** (red). Then choose a solver.
+**Usage:** After generating a maze, click any open cell to set the **start** (blue), then click another to set the **end** (red). Optionally place checkpoints with **Add checkpoint**. Then click either solver — it routes through all checkpoints automatically.
 
 ## Getting Started
 
@@ -68,7 +67,7 @@ Edit the constants at the top of `MazeTest.py` to customize:
 ```python
 GRIDN = 31      # Grid rows (use odd numbers for clean walls)
 GRIDM = 31      # Grid columns
-blockSize = 20   # Cell size in pixels
+BLOCK_SIZE = 20  # Cell size in pixels
 ```
 
 ## Tech Stack
