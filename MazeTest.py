@@ -26,6 +26,7 @@ RED = (250, 0, 0)
 YELLOW = (247, 219, 5)
 ORANGE = (255, 165, 0)
 GREEN = (0, 200, 0)
+PURPLE = (180, 0, 255)
 
 WALL = 1
 PATH = 0
@@ -36,8 +37,18 @@ END = 9
 BFS_BASE = 10
 DFS_VISITED = 11
 ASTAR_VISITED = 12
+ACO_VISITED = 13
+
+ACO_NUM_ANTS = 20
+ACO_MAX_ITER = 50
+ACO_ALPHA = 1.0
+ACO_BETA = 2.0
+ACO_RHO = 0.3
+ACO_Q = 100.0
+ACO_INIT_PHEROMONE = 1.0
 
 maze = np.ones((GRIDN, GRIDM), dtype=int)
+pheromone = np.zeros((GRIDN, GRIDM), dtype=float)
 checkpoints = []
 FinalRoute = []
 STEPS = 0
@@ -93,9 +104,11 @@ def MazeGenerator():
 
 
 def clearMaze():
+    global pheromone
     for x in range(GRIDN):
         for y in range(GRIDM):
             maze[x][y] = WALL
+    pheromone = np.zeros((GRIDN, GRIDM), dtype=float)
 
 
 def ReRun():
@@ -120,6 +133,7 @@ def draw_window():
 
 
 def drawGrid():
+    max_pher = pheromone.max()
     for y in range(GRIDN):
         for x in range(GRIDM):
             rect = pygame.Rect(
@@ -127,7 +141,11 @@ def drawGrid():
                 TRANSPOSEY + y * BLOCK_SIZE,
                 BLOCK_SIZE, BLOCK_SIZE)
             val = maze[x, y]
-            if val == PATH or val == DEAD_END:
+            if val == PATH and max_pher > ACO_INIT_PHEROMONE and pheromone[x][y] > ACO_INIT_PHEROMONE:
+                intensity = min(pheromone[x][y] / max_pher, 1.0)
+                color = (int(180 * intensity), 0, int(255 * intensity))
+                pygame.draw.rect(WIN, color, rect)
+            elif val == PATH or val == DEAD_END:
                 pygame.draw.rect(WIN, WHITE, rect)
             elif val == WALL:
                 pygame.draw.rect(WIN, BLACK, rect)
@@ -139,6 +157,8 @@ def drawGrid():
                 pygame.draw.rect(WIN, RED, rect)
             elif val == ASTAR_VISITED:
                 pygame.draw.rect(WIN, ORANGE, rect)
+            elif val == ACO_VISITED:
+                pygame.draw.rect(WIN, PURPLE, rect)
             elif val > BFS_BASE:
                 pygame.draw.rect(WIN, YELLOW, rect)
     pygame.display.flip()
@@ -162,6 +182,8 @@ def updateGrid(x, y):
         pygame.draw.rect(WIN, RED, rect)
     elif val == ASTAR_VISITED:
         pygame.draw.rect(WIN, ORANGE, rect)
+    elif val == ACO_VISITED:
+        pygame.draw.rect(WIN, PURPLE, rect)
     elif val > BFS_BASE:
         pygame.draw.rect(WIN, YELLOW, rect)
     pygame.display.update(rect)
@@ -382,6 +404,94 @@ def _reconstruct_dfs(stack, show_path):
             stack.pop()
 
 
+def SolveSegmentACO(init, fin, show_path=True):
+    global STEPS, pheromone
+
+    def heuristic(pos):
+        return abs(pos[0] - fin[0]) + abs(pos[1] - fin[1]) + 1
+
+    pheromone = np.zeros((GRIDN, GRIDM), dtype=float)
+    for x in range(GRIDN):
+        for y in range(GRIDM):
+            if maze[x][y] in (PATH, END, CHECKPOINT, START):
+                pheromone[x][y] = ACO_INIT_PHEROMONE
+
+    best_path = None
+    best_length = float('inf')
+
+    for iteration in range(ACO_MAX_ITER):
+        pump_events()
+        ant_paths = []
+
+        for _ in range(ACO_NUM_ANTS):
+            current = init
+            visited = {current}
+            path = [current]
+            stuck = False
+
+            while current != fin:
+                cx, cy = current
+                neighbors = []
+                for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    nx, ny = cx + dx, cy + dy
+                    if in_bounds(nx, ny) and (nx, ny) not in visited:
+                        if maze[nx][ny] in (PATH, END, CHECKPOINT, START):
+                            neighbors.append((nx, ny))
+
+                if not neighbors:
+                    stuck = True
+                    break
+
+                weights = []
+                for n in neighbors:
+                    pher = max(pheromone[n[0]][n[1]], 1e-10)
+                    h = 1.0 / heuristic(n)
+                    weights.append((pher ** ACO_ALPHA) * (h ** ACO_BETA))
+
+                total = sum(weights)
+                probabilities = [w / total for w in weights]
+                current = random.choices(neighbors, weights=probabilities, k=1)[0]
+                visited.add(current)
+                path.append(current)
+
+            if not stuck:
+                ant_paths.append(path)
+                if len(path) < best_length:
+                    best_length = len(path)
+                    best_path = list(path)
+
+        STEPS += 1
+
+        pheromone *= (1 - ACO_RHO)
+
+        for path in ant_paths:
+            deposit = ACO_Q / len(path)
+            for cell in path:
+                pheromone[cell[0]][cell[1]] += deposit
+
+        if iteration % 3 == 0:
+            drawGrid()
+            WIN.fill(BGCOLOR, (800, 600, 200, 50))
+            text = FONT.render(f"Iter {iteration + 1}/{ACO_MAX_ITER}", True, BLACK)
+            WIN.blit(text, (800, 600))
+            pygame.display.flip()
+            time.sleep(0.02)
+
+    pheromone[:] = 0
+
+    if best_path is None:
+        return
+
+    if show_path:
+        for cell in best_path:
+            maze[cell] = START
+            drawGrid()
+            time.sleep(0.005)
+    else:
+        for cell in best_path:
+            FinalRoute.append(cell)
+
+
 def AddCheckpoint(x, y):
     for i in range(GRIDN):
         for j in range(GRIDM):
@@ -411,7 +521,7 @@ def Routing(algorithm='dfs'):
     for idx in range(len(route_points) - 1):
         for x in range(GRIDN):
             for y in range(GRIDM):
-                if maze[x, y] in (DEAD_END, DFS_VISITED, ASTAR_VISITED):
+                if maze[x, y] in (DEAD_END, DFS_VISITED, ASTAR_VISITED, ACO_VISITED):
                     maze[x, y] = PATH
 
         seg_start = route_points[idx]
@@ -423,6 +533,9 @@ def Routing(algorithm='dfs'):
         elif algorithm == 'astar':
             SolveSegmentAStar(seg_start, seg_end,
                               show_path=not has_checkpoints)
+        elif algorithm == 'aco':
+            SolveSegmentACO(seg_start, seg_end,
+                            show_path=not has_checkpoints)
         else:
             SolveUsingDFS(seg_start, seg_end,
                           show_path=not has_checkpoints)
@@ -455,18 +568,21 @@ def main():
     btn_gen = pygame.Rect(50, 30, 100, 50)
     btn_clear = pygame.Rect(200, 30, 100, 50)
     btn_restart = pygame.Rect(350, 30, 100, 50)
-    btn_bfs = pygame.Rect(500, 30, 100, 50)
-    btn_dfs = pygame.Rect(650, 30, 100, 50)
-    btn_astar = pygame.Rect(800, 30, 100, 50)
-    btn_checkpoint = pygame.Rect(910, 30, 120, 50)
+    btn_checkpoint = pygame.Rect(500, 30, 120, 50)
+
+    btn_bfs = pygame.Rect(50, 85, 100, 50)
+    btn_dfs = pygame.Rect(200, 85, 100, 50)
+    btn_astar = pygame.Rect(350, 85, 100, 50)
+    btn_aco = pygame.Rect(500, 85, 120, 50)
 
     Button(btn_gen.x, btn_gen.y, btn_gen.w, btn_gen.h, 'Generate')
     Button(btn_clear.x, btn_clear.y, btn_clear.w, btn_clear.h, 'Clear')
     Button(btn_restart.x, btn_restart.y, btn_restart.w, btn_restart.h, 'Restart')
+    Button(btn_checkpoint.x, btn_checkpoint.y, btn_checkpoint.w, btn_checkpoint.h, 'Add checkpoint')
     Button(btn_bfs.x, btn_bfs.y, btn_bfs.w, btn_bfs.h, 'Solve by BFS')
     Button(btn_dfs.x, btn_dfs.y, btn_dfs.w, btn_dfs.h, 'Solve by DFS')
     Button(btn_astar.x, btn_astar.y, btn_astar.w, btn_astar.h, 'Solve by A*')
-    Button(btn_checkpoint.x, btn_checkpoint.y, btn_checkpoint.w, btn_checkpoint.h, 'Add checkpoint')
+    Button(btn_aco.x, btn_aco.y, btn_aco.w, btn_aco.h, 'Solve by ACO')
 
     text = FONT.render(str(STEPS), True, BLACK)
     WIN.blit(text, (800, 600))
@@ -499,7 +615,7 @@ def main():
                     checkflag += 1
 
                 elif btn_astar.collidepoint(mouse) and posflag == 2:
-                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    WIN.fill(BGCOLOR, (800, 600, 200, 50))
                     FinalRoute.clear()
                     STEPS = 0
                     Routing('astar')
@@ -509,8 +625,19 @@ def main():
                     pygame.display.flip()
                     posflag = 0
 
+                elif btn_aco.collidepoint(mouse) and posflag == 2:
+                    WIN.fill(BGCOLOR, (800, 600, 200, 50))
+                    FinalRoute.clear()
+                    STEPS = 0
+                    Routing('aco')
+                    drawGrid()
+                    text = FONT.render(str(STEPS), True, BLACK)
+                    WIN.blit(text, (800, 600))
+                    pygame.display.flip()
+                    posflag = 0
+
                 elif btn_bfs.collidepoint(mouse) and posflag == 2:
-                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    WIN.fill(BGCOLOR, (800, 600, 200, 50))
                     FinalRoute.clear()
                     STEPS = 0
                     Routing('bfs')
@@ -521,7 +648,7 @@ def main():
                     posflag = 0
 
                 elif btn_dfs.collidepoint(mouse) and posflag == 2:
-                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    WIN.fill(BGCOLOR, (800, 600, 200, 50))
                     FinalRoute.clear()
                     STEPS = 0
                     Routing('dfs')
