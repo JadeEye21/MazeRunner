@@ -1,5 +1,6 @@
 import random
 import time
+import heapq
 
 import pygame
 import numpy as np
@@ -23,6 +24,7 @@ BLACK = (1, 1, 1)
 BLUE = (0, 0, 250)
 RED = (250, 0, 0)
 YELLOW = (247, 219, 5)
+ORANGE = (255, 165, 0)
 GREEN = (0, 200, 0)
 
 WALL = 1
@@ -33,6 +35,7 @@ CHECKPOINT = 4
 END = 9
 BFS_BASE = 10
 DFS_VISITED = 11
+ASTAR_VISITED = 12
 
 maze = np.ones((GRIDN, GRIDM), dtype=int)
 checkpoints = []
@@ -134,6 +137,8 @@ def drawGrid():
                 pygame.draw.rect(WIN, GREEN, rect)
             elif val == END:
                 pygame.draw.rect(WIN, RED, rect)
+            elif val == ASTAR_VISITED:
+                pygame.draw.rect(WIN, ORANGE, rect)
             elif val > BFS_BASE:
                 pygame.draw.rect(WIN, YELLOW, rect)
     pygame.display.flip()
@@ -155,6 +160,8 @@ def updateGrid(x, y):
         pygame.draw.rect(WIN, GREEN, rect)
     elif val == END:
         pygame.draw.rect(WIN, RED, rect)
+    elif val == ASTAR_VISITED:
+        pygame.draw.rect(WIN, ORANGE, rect)
     elif val > BFS_BASE:
         pygame.draw.rect(WIN, YELLOW, rect)
     pygame.display.update(rect)
@@ -255,6 +262,79 @@ def SolveSegmentBFS(init, fin, show_path=True):
             FinalRoute.append(cell)
 
 
+def SolveSegmentAStar(init, fin, show_path=True):
+    global STEPS
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    counter = 0
+    open_set = []
+    heapq.heappush(open_set, (heuristic(init, fin), counter, init))
+    came_from = {}
+    g_score = {init: 0}
+    closed = set()
+
+    maze[init] = ASTAR_VISITED
+
+    while open_set:
+        pump_events()
+        _, _, current = heapq.heappop(open_set)
+
+        if current in closed:
+            continue
+        closed.add(current)
+        STEPS += 1
+
+        if current != init:
+            maze[current] = ASTAR_VISITED
+
+        if current == fin:
+            break
+
+        cx, cy = current
+        for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            nx, ny = cx + dx, cy + dy
+            neighbor = (nx, ny)
+            if not in_bounds(nx, ny) or neighbor in closed:
+                continue
+            if maze[nx][ny] not in (PATH, END, CHECKPOINT, ASTAR_VISITED):
+                continue
+
+            tentative_g = g_score[current] + 1
+            if tentative_g < g_score.get(neighbor, float('inf')):
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f = tentative_g + heuristic(neighbor, fin)
+                counter += 1
+                heapq.heappush(open_set, (f, counter, neighbor))
+
+        drawGrid()
+        time.sleep(0.02)
+
+    path_cells = []
+    node = fin
+    while node in came_from:
+        path_cells.append(node)
+        node = came_from[node]
+    path_cells.append(init)
+    path_cells.reverse()
+
+    for x in range(GRIDN):
+        for y in range(GRIDM):
+            if maze[x][y] == ASTAR_VISITED:
+                maze[x][y] = PATH
+
+    if show_path:
+        for cell in path_cells:
+            maze[cell] = START
+            drawGrid()
+            time.sleep(0.005)
+    else:
+        for cell in path_cells:
+            FinalRoute.append(cell)
+
+
 def SolveUsingDFS(init, fin, show_path=True):
     global STEPS
     stack = [init]
@@ -331,7 +411,7 @@ def Routing(algorithm='dfs'):
     for idx in range(len(route_points) - 1):
         for x in range(GRIDN):
             for y in range(GRIDM):
-                if maze[x, y] in (DEAD_END, DFS_VISITED):
+                if maze[x, y] in (DEAD_END, DFS_VISITED, ASTAR_VISITED):
                     maze[x, y] = PATH
 
         seg_start = route_points[idx]
@@ -340,6 +420,9 @@ def Routing(algorithm='dfs'):
         if algorithm == 'bfs':
             SolveSegmentBFS(seg_start, seg_end,
                             show_path=not has_checkpoints)
+        elif algorithm == 'astar':
+            SolveSegmentAStar(seg_start, seg_end,
+                              show_path=not has_checkpoints)
         else:
             SolveUsingDFS(seg_start, seg_end,
                           show_path=not has_checkpoints)
@@ -374,13 +457,15 @@ def main():
     btn_restart = pygame.Rect(350, 30, 100, 50)
     btn_bfs = pygame.Rect(500, 30, 100, 50)
     btn_dfs = pygame.Rect(650, 30, 100, 50)
-    btn_checkpoint = pygame.Rect(800, 30, 120, 50)
+    btn_astar = pygame.Rect(800, 30, 100, 50)
+    btn_checkpoint = pygame.Rect(910, 30, 120, 50)
 
     Button(btn_gen.x, btn_gen.y, btn_gen.w, btn_gen.h, 'Generate')
     Button(btn_clear.x, btn_clear.y, btn_clear.w, btn_clear.h, 'Clear')
     Button(btn_restart.x, btn_restart.y, btn_restart.w, btn_restart.h, 'Restart')
     Button(btn_bfs.x, btn_bfs.y, btn_bfs.w, btn_bfs.h, 'Solve by BFS')
     Button(btn_dfs.x, btn_dfs.y, btn_dfs.w, btn_dfs.h, 'Solve by DFS')
+    Button(btn_astar.x, btn_astar.y, btn_astar.w, btn_astar.h, 'Solve by A*')
     Button(btn_checkpoint.x, btn_checkpoint.y, btn_checkpoint.w, btn_checkpoint.h, 'Add checkpoint')
 
     text = FONT.render(str(STEPS), True, BLACK)
@@ -412,6 +497,17 @@ def main():
 
                 elif btn_checkpoint.collidepoint(mouse) and posflag == 2:
                     checkflag += 1
+
+                elif btn_astar.collidepoint(mouse) and posflag == 2:
+                    WIN.fill(BGCOLOR, (800, 600, 100, 50))
+                    FinalRoute.clear()
+                    STEPS = 0
+                    Routing('astar')
+                    drawGrid()
+                    text = FONT.render(str(STEPS), True, BLACK)
+                    WIN.blit(text, (800, 600))
+                    pygame.display.flip()
+                    posflag = 0
 
                 elif btn_bfs.collidepoint(mouse) and posflag == 2:
                     WIN.fill(BGCOLOR, (800, 600, 100, 50))

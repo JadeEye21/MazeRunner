@@ -1,6 +1,6 @@
 # MazeRunner
 
-An interactive maze generator and pathfinding visualizer built with Python and Pygame. Generate random mazes and watch BFS and DFS algorithms solve them in real time.
+An interactive maze generator and pathfinding visualizer built with Python and Pygame. Generate random mazes and watch BFS, DFS, and A* algorithms solve them in real time.
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python&logoColor=white)
 ![Pygame](https://img.shields.io/badge/Pygame-2.x-green)
@@ -10,14 +10,16 @@ An interactive maze generator and pathfinding visualizer built with Python and P
 - **Randomized Maze Generation** — Prim's algorithm variant that carves paths through a grid, producing unique solvable mazes every run
 - **BFS Solver** — Breadth-first search with wave-propagation visualization; guarantees the shortest path
 - **DFS Solver** — Depth-first search with backtracking; explores paths exhaustively and highlights the solution
-- **Checkpoint Routing** — Place intermediate waypoints and compute a multi-segment route through all of them in order
+- **A\* Solver** — A* search with Manhattan distance heuristic; guarantees the shortest path while exploring fewer cells than BFS by prioritizing cells closer to the goal
+- **Multi-Checkpoint Routing** — Place intermediate waypoints and route through them with any algorithm
 - **Real-time Animation** — Watch each algorithm explore the maze cell by cell, with color-coded states:
   - ⬜ White — open path
   - ⬛ Black — wall
   - 🟦 Blue — start / solution path
   - 🟥 Red — end
   - 🟩 Green — checkpoint
-  - 🟨 Yellow — visited (DFS exploration)
+  - 🟨 Yellow — visited (BFS/DFS exploration)
+  - 🟧 Orange — visited (A* exploration)
 
 ## How It Works
 
@@ -30,8 +32,11 @@ Explores all neighbors at the current depth before moving deeper. Uses a wavefro
 ### DFS (Depth-First Search)
 Uses a stack to explore as deep as possible along each branch before backtracking. Visited dead-ends are marked and skipped. The final path is the stack contents when the end is reached.
 
+### A* Search
+Combines the shortest-path guarantee of BFS with a heuristic that steers exploration toward the goal. Uses f(n) = g(n) + h(n), where g(n) is the actual distance from the start and h(n) is the Manhattan distance to the goal. Explores significantly fewer cells than BFS on most mazes while still finding the optimal path.
+
 ### Multi-Checkpoint Routing
-Both BFS and DFS support multi-checkpoint routing. Place any number of intermediate waypoints, then click either solver — it automatically breaks the problem into segments (start → checkpoint₁ → checkpoint₂ → ... → end) and solves each segment with your chosen algorithm, stitching them into a complete route. BFS guarantees the shortest path per segment; DFS explores exhaustively.
+All three algorithms (BFS, DFS, A*) support multi-checkpoint routing. Place any number of intermediate waypoints, then click any solver — it automatically breaks the problem into segments (start → checkpoint₁ → checkpoint₂ → ... → end) and solves each segment with your chosen algorithm, stitching them into a complete route.
 
 ## Controls
 
@@ -42,9 +47,10 @@ Both BFS and DFS support multi-checkpoint routing. Place any number of intermedi
 | **Restart** | Clear solution paths, keep the maze |
 | **Solve by BFS** | Run BFS (direct or through checkpoints) |
 | **Solve by DFS** | Run DFS (direct or through checkpoints) |
+| **Solve by A\*** | Run A* (direct or through checkpoints) |
 | **Add checkpoint** | Click to place a waypoint, then click a cell |
 
-**Usage:** After generating a maze, click any open cell to set the **start** (blue), then click another to set the **end** (red). Optionally place checkpoints with **Add checkpoint**. Then click either solver — it routes through all checkpoints automatically.
+**Usage:** After generating a maze, click any open cell to set the **start** (blue), then click another to set the **end** (red). Optionally place checkpoints with **Add checkpoint**. Then click any solver — it routes through all checkpoints automatically.
 
 ## Getting Started
 
