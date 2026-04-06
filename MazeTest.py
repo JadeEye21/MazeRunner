@@ -249,7 +249,7 @@ def SolveUsingBFS():
     pygame.display.flip()
 
 
-def SolveUsingDFS(init, fin):
+def SolveUsingDFS(init, fin, show_path=True):
     global STEPS
     stack = [init]
 
@@ -269,7 +269,7 @@ def SolveUsingDFS(init, fin):
                     break
                 elif (ni, nj) == fin:
                     drawGrid()
-                    _reconstruct_dfs(stack)
+                    _reconstruct_dfs(stack, show_path)
                     return
 
         if not moved:
@@ -281,8 +281,8 @@ def SolveUsingDFS(init, fin):
         time.sleep(0.01)
 
 
-def _reconstruct_dfs(stack):
-    if len(checkpoints) == 2:
+def _reconstruct_dfs(stack, show_path):
+    if show_path:
         while stack:
             maze[stack[-1]] = START
             stack.pop()
@@ -320,15 +320,17 @@ def Routing():
     maze[init] = PATH
 
     route_points = [init] + list(checkpoints) + [fin]
+    has_checkpoints = len(route_points) > 2
 
     for idx in range(len(route_points) - 1):
         for x in range(GRIDN):
             for y in range(GRIDM):
                 if maze[x, y] == DEAD_END:
                     maze[x, y] = PATH
-        SolveUsingDFS(route_points[idx], route_points[idx + 1])
+        SolveUsingDFS(route_points[idx], route_points[idx + 1],
+                       show_path=not has_checkpoints)
 
-    if len(route_points) > 2:
+    if has_checkpoints:
         while FinalRoute:
             cell = FinalRoute.pop()
             if cell in checkpoints:
