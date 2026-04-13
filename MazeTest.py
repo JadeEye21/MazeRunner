@@ -39,7 +39,7 @@ DFS_VISITED = 11
 ASTAR_VISITED = 12
 ACO_VISITED = 13
 
-ACO_NUM_ANTS = 20
+ACO_NUM_ANTS = 50
 ACO_MAX_ITER = 50
 ACO_ALPHA = 1.0
 ACO_BETA = 2.0
@@ -427,9 +427,13 @@ def SolveSegmentACO(init, fin, show_path=True):
             current = init
             visited = {current}
             path = [current]
-            stuck = False
+            found = False
 
-            while current != fin:
+            while path:
+                if current == fin:
+                    found = True
+                    break
+
                 cx, cy = current
                 neighbors = []
                 for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
@@ -439,8 +443,10 @@ def SolveSegmentACO(init, fin, show_path=True):
                             neighbors.append((nx, ny))
 
                 if not neighbors:
-                    stuck = True
-                    break
+                    path.pop()
+                    if path:
+                        current = path[-1]
+                    continue
 
                 weights = []
                 for n in neighbors:
@@ -448,13 +454,11 @@ def SolveSegmentACO(init, fin, show_path=True):
                     h = 1.0 / heuristic(n)
                     weights.append((pher ** ACO_ALPHA) * (h ** ACO_BETA))
 
-                total = sum(weights)
-                probabilities = [w / total for w in weights]
-                current = random.choices(neighbors, weights=probabilities, k=1)[0]
+                current = random.choices(neighbors, weights=weights, k=1)[0]
                 visited.add(current)
                 path.append(current)
 
-            if not stuck:
+            if found:
                 ant_paths.append(path)
                 if len(path) < best_length:
                     best_length = len(path)
@@ -469,13 +473,12 @@ def SolveSegmentACO(init, fin, show_path=True):
             for cell in path:
                 pheromone[cell[0]][cell[1]] += deposit
 
-        if iteration % 3 == 0:
-            drawGrid()
-            WIN.fill(BGCOLOR, (800, 600, 200, 50))
-            text = FONT.render(f"Iter {iteration + 1}/{ACO_MAX_ITER}", True, BLACK)
-            WIN.blit(text, (800, 600))
-            pygame.display.flip()
-            time.sleep(0.02)
+        drawGrid()
+        WIN.fill(BGCOLOR, (800, 600, 200, 50))
+        text = FONT.render(f"Iter {iteration + 1}/{ACO_MAX_ITER}", True, BLACK)
+        WIN.blit(text, (800, 600))
+        pygame.display.flip()
+        time.sleep(0.15)
 
     pheromone[:] = 0
 
